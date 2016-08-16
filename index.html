@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh-CN" ng-app="diskanalysis" ng-controller="MainController">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>硬盘分析</title>
+    <link href="node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="./main.css" rel="stylesheet">
+    <script src="node_modules/angular/angular.min.js"></script>
+    <script src="./main.js"></script>
+</head>
+<body>
+<div class="container">
+    <div class="page-header">
+        <h1>硬盘文件分析</h1>
+    </div>
+    <ul class="list-group">
+        <li class="list-group-item harddisk" ng-repeat="disk in disks track by $index">
+            <img src="./hard-disk.svg">
+            <p>硬盘名：{{disk.description}}</p>
+            <p>设备名：{{disk.device}}</p>
+            <p>容量：{{disk.size / 1024 / 1024 / 1024 | number: 0}} GB</p>
+            <p>挂载点：{{disk.mountpoint}}</p>
+            <input type="button" class="btn btn-primary btn-analysis" value="分析"
+                   ng-disabled="!disk.mountpoint" ng-click="analysis(disk.mountpoint)">
+        </li>
+    </ul>
+</div>
+</body>
+</html>

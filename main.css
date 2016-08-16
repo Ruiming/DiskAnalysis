@@ -1,0 +1,18 @@
+p, ul, li{
+    margin-bottom: 0;
+}
+li img {
+    width: 80px;
+    float: left;
+    position: relative;
+}
+.harddisk:hover {
+    background-color: #eee;
+}
+.btn-analysis {
+    position: absolute;
+    height: 36px;
+    width: 60px;
+    right: 20px;
+    top: 32px;
+}
