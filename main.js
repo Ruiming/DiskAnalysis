@@ -54,6 +54,7 @@ var drivelist = require('drivelist');
                                         if (data.isFile()) {
                                             // 计算文件数，遍历到文件即可父节点加1
                                             // 注意遍历的终点在这里
+                                            tree.size += data.size;
                                             tree.fileCount ++;
                                             data.fileCount = 1;
                                             tree.file.push(data);
