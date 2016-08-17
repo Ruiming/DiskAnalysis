@@ -1,6 +1,7 @@
 var fs = require('original-fs');
 var os = require('os');
 var drivelist = require('drivelist');
+const childProcess = require('child_process');
 
 (function() {
     angular
@@ -11,108 +12,55 @@ var drivelist = require('drivelist');
 
     function MainController($scope, $interval) {
 
-        var root = {};
-        var log = [];
+
         $scope.analysis = analysis;
+
+        function analysis(mountpoint) {
+            const worker = childProcess.fork('worker.js');
+
+            worker.on('message',function(mes) {
+                console.log(mes);
+            });
+
+            worker.send('/home/ruiming/Desktop/');
+        }
 
         // 获取硬盘信息
         drivelist.list((error, disks) => {
             if (error) throw error;
-            $scope.$apply(() => $scope.disks = disks)
+            $scope.$apply(() => {
+                $scope.disks = disks;
+            })
         });
 
-        function analysis(mountpoint) {
-            var startTime = new Date().getTime();
-            let dist = mountpoint.split(',');
-            // TODO: multi mountpoint ?
-            root.path = dist[0];
-            new Promise((resolve, reject) => {
-                fs.lstat(root.path, (err, data) => {
-                    if(err) {
-                        log.push(err);
-                        reject(err);
+        // 获取挂载点的信息
+        function getDiskMessage(disk) {
+            // Read a mountpoint message
+            return new Promise((resolve, reject) => {
+                let sh, re;
+                switch (os.platform()) {
+                    case 'linux':
+                        sh = 'df -h -k ' + disk.mounted;
+                        re = /\s+(\d+)\s+(\d+)\s+(\d+)[%]/;
+                        break;
+                    default:
+                        alert("Your system is not supported");
+                }
+                childProcess.exec(sh, (error, stdout, stderr) => {
+                    if (error) {
+                        reject(error);
+                        console.error(`exec error: ${error}`);
                     } else {
-                        Object.assign(root, data, {file: [], folder: [], size: 0, fileCount: 0, folderCount: 0});
-                        resolve(root);
+                        let space = stdout.match(re);
+                        disk.usedSpace = space[1];
+                        disk.availableSpace = space[2];
+                        disk.used = space[3];
+                        console.log(disk);
+                        resolve(disk);
                     }
                 });
-            }).then(root => search(root))
-                .then(() => {
-                    console.log(root);
-                    var endTime = new Date().getTime();
-                    console.log(endTime - startTime + "ms");
-                    // debugger;
-                    console.log(log);
-                });
+            });
         }
 
-        function search(tree) {
-            return new Promise((resolve, reject) => {
-                fs.readdir(tree.path, (err, data) => {
-                    // Use resolve to avoid Promise.all no work
-                    if (err) {
-                        log.push(err);
-                        resolve();
-                    } else {
-                        let promises = data.map(fileName => {
-                            return new Promise((resolve, reject) => {
-                                fs.lstat(tree.path + fileName, (err, stat) => {
-                                    if (err) {
-                                        log.push(err);
-                                        resolve();
-                                    } else {
-                                        stat.path = tree.path + fileName;
-                                        // ignore directory /proc
-                                        if (stat.path === '/proc') {
-                                            tree.fileCount++;
-                                            stat.fileCount = 1;
-                                            tree.file.push(stat);
-                                            resolve(stat);
-                                        } else if (stat.isDirectory()) {
-                                            stat.path += '/';
-                                            stat.folderCount = 0;
-                                            stat.folder = [];
-                                            stat.file = [];
-                                            stat.fileCount = 0;
-                                            tree.folder.push(stat);
-                                        } else {
-                                            // 文件数计算
-                                            tree.size += stat.size;
-                                            tree.fileCount++;
-                                            stat.fileCount = 1;
-                                            tree.file.push(stat);
-                                        }
-                                        resolve(stat);
-                                    }
-                                })
-                            });
-                        });
-                        Promise.all(promises).then(() => {
-                            resolve(tree);
-                        });
-                    }
-                })
-            }).then(tree => {
-                    return new Promise((resolve, reject) => {
-                        let promises = tree.folder.map(stat => {
-                            return search(stat);
-                        });
-                        Promise.all(promises).then(datas => {
-                            datas.map(stat => {
-                                // 文件夹计算
-                                if (stat && stat.isDirectory())  tree.folderCount += stat.folderCount + 1;
-                                // 容量计算
-                                if (stat) {
-                                    tree.size += stat.size;
-                                    tree.fileCount += stat.fileCount;
-                                }
-                            });
-                            resolve(tree);
-                        }).catch(err => {
-                            log.push(err);
-                        });
-                    });
-            })
-        }
     }
 }());
