@@ -24,7 +24,7 @@ var drivelist = require('drivelist');
         function analysis(mountpoint) {
             // let dist = mountpoint.split(',');
             let tree = {
-                path: '/home/ruiming/Dropbox/',
+                path: '/home/ruiming/Desktop/New/',
                 file: [],
                 folder: [],
                 size: 0,
@@ -52,8 +52,7 @@ var drivelist = require('drivelist');
                                     } else {
                                         data.path = tree.path + fileName;
                                         if (data.isFile()) {
-                                            // 计算文件数，遍历到文件即可父节点加1
-                                            // 注意遍历的终点在这里
+                                            // 文件数计算
                                             tree.size += data.size;
                                             tree.fileCount ++;
                                             data.fileCount = 1;
@@ -71,7 +70,6 @@ var drivelist = require('drivelist');
                                 })
                             });
                         });
-                        // { path: '', file: [stat ... ], folder: [stat ...] }
                         Promise.all(promises).then(() => {
                             resolve(tree);
                         });
@@ -84,8 +82,9 @@ var drivelist = require('drivelist');
                     });
                     Promise.all(promises).then((datas) => {
                         datas.map(stat => {
-                            if(stat.isDirectory())  tree.folderCount += stat.folderCount || 1;
-                            // 计算容量要等待该层次异步结束才能操作
+                            // 文件夹计算
+                            if(stat.isDirectory())  tree.folderCount += stat.folderCount + 1;
+                            // 容量计算
                             tree.size += stat.size;
                             tree.fileCount += stat.fileCount;
                         });
