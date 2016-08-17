@@ -1,8 +1,6 @@
 var fs = require('original-fs');
 var os = require('os');
 var drivelist = require('drivelist');
-var cluster = require('cluster');
-var numCPUs = require('os').cpus().length;
 
 (function() {
     angular
@@ -12,6 +10,7 @@ var numCPUs = require('os').cpus().length;
     MainController.$inject = ['$scope', '$interval'];
 
     function MainController($scope, $interval) {
+
         var root = {};
         var log = [];
         $scope.analysis = analysis;
