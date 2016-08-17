@@ -19,7 +19,7 @@
             <img src="./hard-disk.svg">
             <p>硬盘名：{{disk.description}}</p>
             <p>设备名：{{disk.device}}</p>
-            <p>容量：{{disk.size / 1024 / 1024 / 1024 | number: 0}} GB</p>
+            <p>容量：{{disk.size}} B</p>
             <p>挂载点：{{disk.mountpoint}}</p>
             <input type="button" class="btn btn-primary btn-analysis" value="分析"
                    ng-disabled="!disk.mountpoint" ng-click="analysis(disk.mountpoint)">
