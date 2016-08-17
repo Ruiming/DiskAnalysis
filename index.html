@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN" ng-app="diskanalysis" ng-controller="MainController">
+<html lang="zh-CN" ng-app="diskanalysis" ng-controller="MainController as vm">
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -16,17 +16,38 @@
     <div class="page-header">
         <h1>硬盘文件分析</h1>
     </div>
-    <ul class="list-group">
-        <li class="list-group-item harddisk" ng-repeat="disk in disks track by $index">
+    <ul class="list-group harddisk">
+        <li class="list-group-item" ng-repeat="disk in vm.disks track by $index">
             <img src="./hard-disk.svg">
-            <p>硬盘名：{{disk.description}}</p>
-            <p>设备名：{{disk.device}}</p>
-            <p>容量：{{disk.size}} B</p>
-            <p>挂载点：{{disk.mountpoint}}</p>
+            <p>Description：{{disk.description}}</p>
+            <p>Device：{{disk.device}}</p>
+            <p>Size：{{disk.size / 1024 / 1024 / 1024 | number:0}} GB</p>
+            <p>Mountpoints：{{disk.mountpoint}}</p>
             <input type="button" class="btn btn-primary btn-analysis" value="分析"
-                   ng-disabled="!disk.mountpoint" ng-click="analysis(disk.mountpoint)">
+                   ng-disabled="!disk.mountpoint" ng-click="vm.analysis(disk)">
+            <ul class="list-group mountpoint">
+                <li class="list-group-item" ng-repeat="disk in disk.disks">
+                    <img src="./mountpoint.svg">
+                    <p>Mountpoint: {{disk.mounted}}</p>
+                    <p>UsedSpace: {{disk.usedSpace / 1024 / 1024  | number:0}} GB</p>
+                    <p>AvailableSpace: {{disk.availableSpace / 1024 / 1024 | number:0}} GB</p>
+                    <input type="button" class="btn btn-primary btn-analysis" value="分析"
+                           ng-disabled="!disk.mountpoint" ng-click="vm.analysis(disk)">
+                </li>
+            </ul>
         </li>
     </ul>
+    <div class="loading">
+        <div class="loading-header">
+            <h2>正在分析中</h2>
+        </div>
+        <div class="loading-content">
+            <uib-progressbar max="vm.max" value="vm.current">
+                <span style="color:white; white-space:nowrap;">{{vm.current}} / {{vm.max}}</span>
+            </uib-progressbar>
+        </div>
+    </div>
+
 </div>
 </body>
 </html>

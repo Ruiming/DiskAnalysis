@@ -83,7 +83,7 @@
                         });
                     });
                     Promise.all(promises).then(() => {
-                        if(calc % 7 === 0) {
+                        if(calc % 141 === 0) {
                             process.send({
                                 type: 'processing',
                                 size: calc
