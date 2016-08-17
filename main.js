@@ -25,7 +25,7 @@ var drivelist = require('drivelist');
             let dist = mountpoint.split(',');
             if(dist.indexOf('/') !== -1) {
                 // TODO
-                root.path = '/home/';
+                root.path = '/etc/';
                 new Promise((resolve, reject) => {
                     fs.stat(root.path, (err, data) => {
                         if(err) {
@@ -57,28 +57,28 @@ var drivelist = require('drivelist');
                     } else {
                         let promises = data.map(fileName => {
                             return new Promise((resolve, reject) => {
-                                fs.stat(tree.path + fileName, (err, data) => {
+                                fs.stat(tree.path + fileName, (err, stat) => {
                                     if (err) {
                                         // TODO
                                         log.push(err);
                                         resolve();
                                     } else {
-                                        data.path = tree.path + fileName;
-                                        if (data.isDirectory()) {
-                                            data.folderCount = 0;
-                                            data.path += '/';
-                                            data.folder = [];
-                                            data.file = [];
-                                            data.fileCount = 0;
-                                            tree.folder.push(data);
+                                        stat.path = tree.path + fileName;
+                                        if (stat.isDirectory()) {
+                                            stat.folderCount = 0;
+                                            stat.path += '/';
+                                            stat.folder = [];
+                                            stat.file = [];
+                                            stat.fileCount = 0;
+                                            tree.folder.push(stat);
                                         } else {
                                             // 文件数计算
-                                            tree.size += data.size;
+                                            tree.size += stat.size;
                                             tree.fileCount++;
-                                            data.fileCount = 1;
-                                            tree.file.push(data);
+                                            stat.fileCount = 1;
+                                            tree.file.push(stat);
                                         }
-                                        resolve(data);
+                                        resolve(stat);
                                     }
                                 })
                             });
