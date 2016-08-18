@@ -43,7 +43,7 @@
         </div>
         <div class="loading-content">
             <uib-progressbar max="vm.max" value="vm.current">
-                <span style="color:white; white-space:nowrap;">{{vm.current}} / {{vm.max}}</span>
+                <span style="color:white; white-space:nowrap;">{{vm.current / vm.max | number : 2}}</span>
             </uib-progressbar>
         </div>
     </div>

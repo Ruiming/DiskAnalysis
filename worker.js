@@ -1,5 +1,8 @@
 (function() {
     var fs = require('original-fs');
+    const v8 = require('v8');
+    v8.setFlagsFromString('--max_old_space_size=8192');
+
     var root = {};
     var log = [];
     var calc = 0;
@@ -16,26 +19,28 @@
                     log.push(err);
                     reject(err);
                 } else {
-                    Object.assign(root, data, {file: [], folder: [], size: 0, fileCount: 0, folderCount: 0});
+                    Object.assign(root, {file: [], folder: [], size: 0, fileCount: 0, folderCount: 0});
                     resolve(root);
                 }
             });
         }).then(root => search(root))
             .then(() => {
-                process.send({
-                    type: 'end'
-                });
                 var endTime = new Date().getTime();
                 let usedTime = endTime - startTime;
-                let data = {
-                    type: 'result',
-                    result: root,
+                process.send({
+                    type: 'end',
                     usedTime: usedTime,
                     startTime: startTime,
                     endTime: endTime,
                     log: log
-                };
-                process.send(data);
+                });
+                process.send({
+                    type: 'data',
+                    file: root.file
+                });
+                process.nextTick(() => {
+                    process.send(root);
+                });
             });
     });
 
@@ -54,30 +59,27 @@
                                     log.push(err);
                                     resolve();
                                 } else {
-                                    stat.path = tree.path + fileName;
+                                    let file = Object.assign({fileCount: 0, folderCount: 0, type: 'file',
+                                        file: [], folder: [], size: stat.size, path: tree.path + fileName});
                                     // ignore directory /proc
-                                    if (stat.path === '/proc') {
+                                    if (file.path === '/proc') {
                                         tree.fileCount++;
-                                        stat.fileCount = 1;
-                                        tree.file.push(stat);
-                                        resolve(stat);
+                                        file.fileCount = 1;
+                                        tree.file.push(file);
                                     } else if (stat.isDirectory()) {
-                                        stat.path += '/';
-                                        stat.folderCount = 0;
-                                        stat.folder = [];
-                                        stat.file = [];
-                                        stat.fileCount = 0;
-                                        tree.folder.push(stat);
+                                        file.path += '/';
+                                        file.type = 'folder';
+                                        tree.folder.push(file);
                                     } else {
                                         // 用于计算进度
                                         calc += stat.size;
                                         // 文件数计算
-                                        tree.size += stat.size;
+                                        tree.size += file.size;
                                         tree.fileCount++;
-                                        stat.fileCount = 1;
-                                        tree.file.push(stat);
+                                        file.fileCount = 1;
+                                        tree.file.push(file);
                                     }
-                                    resolve(stat);
+                                    resolve(file);
                                 }
                             })
                         });
@@ -101,7 +103,7 @@
                 Promise.all(promises).then(datas => {
                     datas.map(stat => {
                         // 文件夹计算
-                        if (stat && stat.isDirectory())  tree.folderCount += stat.folderCount + 1;
+                        if (stat && stat.type === 'folder')  tree.folderCount += stat.folderCount + 1;
                         // 容量计算
                         if (stat) {
                             tree.size += stat.size;
