@@ -46,6 +46,7 @@ const childProcess = require('child_process');
                 }).then(() => {
                     vm.disks = disks;
                     vm.os = os;
+                    console.log(disks);
                 })
             }
         });
@@ -106,11 +107,12 @@ const childProcess = require('child_process');
         }
 
         function analysis(disk) {
+            // TODO: 统一K为单位
             var startTime = new Date().getTime();
             // let dist = mountpoint.split(',');
             // TODO: multi mountpoint ?
-            root.path = disk.mountpoint;
-            root.max = disk.usedSpace * 1024;
+            root.path = disk.mountpoint + '/';
+            root.max = disk.usedSpace * 1024　* 1024;
             new Promise((resolve, reject) => {
                 fs.lstat(root.path, (err, data) => {
                     if (err) {
@@ -125,11 +127,13 @@ const childProcess = require('child_process');
                 .then(() => {
                     var endTime = new Date().getTime();
                     let usedTime = endTime - startTime;
+                    calc = root.size;
                     root.max = root.size;
                     root.startTime = startTime;
                     root.endTime = endTime;
                     root.usedTime = usedTime;
                     console.log(root);
+                    console.log(log);
                 });
         }
 
