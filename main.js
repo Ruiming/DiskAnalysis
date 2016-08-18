@@ -13,10 +13,14 @@ const childProcess = require('child_process');
     function MainController($scope, $interval) {
         let vm = this;
         // 状态显示
+        vm.start = false;
+        vm.finish = false;
         vm.max = 0;
         vm.current = 0;
         // 显示磁盘
         vm.disks = null;
+        // 分析结果
+        vm.root = null;
 
         // 函数调用
         vm.analysis = analysis;
@@ -71,9 +75,9 @@ const childProcess = require('child_process');
                     } else {
                         let space = stdout.match(re);
                         resolve({
-                            usedSpace: space[1],
-                            availableSpace: space[2],
-                            used: space[3],
+                            usedSpace: space[1] * 1024,
+                            availableSpace: space[2] * 1024,
+                            used: space[3] / 100,
                             mountpoint: disk
                         });
                     }
@@ -107,12 +111,17 @@ const childProcess = require('child_process');
         }
 
         function analysis(disk) {
+            vm.start = true;
             // TODO: 统一K为单位
             var startTime = new Date().getTime();
             // let dist = mountpoint.split(',');
             // TODO: multi mountpoint ?
-            root.path = disk.mountpoint + '/';
-            root.max = disk.usedSpace * 1024　* 1024;
+            root.path = disk.mountpoint;
+            if(root.path[root.path.length - 1] !== '/') {
+                root.path += '/';
+            }
+            // 遍历以B计算
+            root.max = disk.usedSpace;
             new Promise((resolve, reject) => {
                 fs.lstat(root.path, (err, data) => {
                     if (err) {
@@ -140,6 +149,7 @@ const childProcess = require('child_process');
         var root = {};
         var log = [];
         var calc = 0;
+        var currentFile = null;
 
         function search(tree) {
             return new Promise((resolve, reject) => {
@@ -157,7 +167,7 @@ const childProcess = require('child_process');
                                         resolve();
                                     } else {
                                         stat.path = tree.path + fileName;
-                                        stat.atime = stat.ctime = stat.mtime = stat.birthtime = null;
+                                        currentFile = stat.path;
                                         // ignore directory /proc
                                         if (stat.path === '/proc') {
                                             tree.fileCount++;
@@ -187,6 +197,9 @@ const childProcess = require('child_process');
                         });
                         Promise.all(promises).then(() => {
                             resolve(tree);
+                        }).catch(err => {
+                            log.push(err);
+                            reject(err);
                         });
                     }
                 })
@@ -218,6 +231,7 @@ const childProcess = require('child_process');
             vm.root = root;
             vm.max = root.max;
             vm.current = calc;
+            vm.currentFile = currentFile;
         }, 100);
 
     }

@@ -56,3 +56,15 @@ li img {
 .loading-header {
     text-align: center;
 }
+.loading-content {
+    margin-bottom: 20px;
+}
+.loading-content .progress {
+    margin-top: 20px;
+    margin-bottom: 5px;
+}
+.loading-content small {
+    text-align: center;
+    word-break: break-all;
+    display: block;
+}
