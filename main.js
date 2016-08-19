@@ -27,39 +27,7 @@ const childProcess = require('child_process');
             'folder': './images/folder.sve'
         };
 
-        // 函数调用
-        vm.analysis = analysis;
-        vm.detail = detail;
 
-        // 获取硬盘及分区信息
-        // TODO: prefetch every disk's size
-        drivelist.list((error, disks) => {
-            if (error) throw error;
-            let promises = [];
-            for(let i=0; i<disks.length; i++) {
-                if(!disks[i].mountpoint) continue;
-                let mountpoint = disks[i].mountpoint.split(',');
-                for(let j=0; j<mountpoint.length; j++) {
-                    promises.push(getDiskMessage(mountpoint[j]))
-                }
-                Promise.all(promises).then(data => {
-                    let k = 0;
-                    for(let i=0; i<disks.length; i++) {
-                        if(!disks[i].mountpoint) continue;
-                        let mountpoint = disks[i].mountpoint.split(',');
-                        disks[i].disks = [];
-                        for(let j=0; j<mountpoint.length; j++) {
-                            disks[i].disks[j] = data[k++];
-                        }
-                    }
-                    return disks;
-                }).then(() => {
-                    vm.disks = disks;
-                    vm.os = os;
-                    console.log(disks);
-                })
-            }
-        });
         vm.options = {
             chart: {
                 type: 'discreteBarChart',
@@ -99,6 +67,41 @@ const childProcess = require('child_process');
                 { "label" : "H" , "value" : -5.1387322875705 }
             ]
         }];
+
+        // 函数调用
+        vm.analysis = analysis;
+        vm.detail = detail;
+
+        // 获取硬盘及分区信息
+        // TODO: prefetch every disk's size
+        drivelist.list((error, disks) => {
+            if (error) throw error;
+            let promises = [];
+            for(let i=0; i<disks.length; i++) {
+                if(!disks[i].mountpoint) continue;
+                let mountpoint = disks[i].mountpoint.split(',');
+                for(let j=0; j<mountpoint.length; j++) {
+                    promises.push(getDiskMessage(mountpoint[j]))
+                }
+                Promise.all(promises).then(data => {
+                    let k = 0;
+                    for(let i=0; i<disks.length; i++) {
+                        if(!disks[i].mountpoint) continue;
+                        let mountpoint = disks[i].mountpoint.split(',');
+                        disks[i].disks = [];
+                        for(let j=0; j<mountpoint.length; j++) {
+                            disks[i].disks[j] = data[k++];
+                        }
+                    }
+                    return disks;
+                }).then(() => {
+                    vm.disks = disks;
+                    vm.os = os;
+                    console.log(disks);
+                })
+            }
+        });
+
         function detail(stat) {
             stat.more = !stat.more;
             vm.stat = stat;
