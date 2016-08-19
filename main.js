@@ -1,6 +1,7 @@
 var fs = require('original-fs');
 var os = require('os').platform();
 var drivelist = require('drivelist');
+var d3 = require('d3');
 const childProcess = require('child_process');
 
 (function() {
@@ -26,47 +27,6 @@ const childProcess = require('child_process');
             'file': './images/file.svg',
             'folder': './images/folder.sve'
         };
-
-
-        vm.options = {
-            chart: {
-                type: 'discreteBarChart',
-                height: 450,
-                margin : {
-                    top: 20,
-                    right: 20,
-                    bottom: 60,
-                    left: 55
-                },
-                x: function(d){ return d.label; },
-                y: function(d){ return d.value; },
-                showValues: true,
-                valueFormat: function(d){
-                    return d3.format(',.4f')(d);
-                },
-                transitionDuration: 500,
-                xAxis: {
-                    axisLabel: 'X Axis'
-                },
-                yAxis: {
-                    axisLabel: 'Y Axis',
-                    axisLabelDistance: 30
-                }
-            }
-        };
-        vm.data = [{
-            key: "Cumulative Return",
-            values: [
-                { "label" : "A" , "value" : -29.765957771107 },
-                { "label" : "B" , "value" : 0 },
-                { "label" : "C" , "value" : 32.807804682612 },
-                { "label" : "D" , "value" : 196.45946739256 },
-                { "label" : "E" , "value" : 0.19434030906893 },
-                { "label" : "F" , "value" : -98.079782601442 },
-                { "label" : "G" , "value" : -13.925743130903 },
-                { "label" : "H" , "value" : -5.1387322875705 }
-            ]
-        }];
 
         // 函数调用
         vm.analysis = analysis;
@@ -105,7 +65,40 @@ const childProcess = require('child_process');
         function detail(stat) {
             stat.more = !stat.more;
             vm.stat = stat;
-
+            vm.options = {
+                chart: {
+                    type: 'pieChart',
+                    height: 500,
+                    x: function(d){return d.key;},
+                    y: function(d){return d.y;},
+                    legendPosition: "right",
+                    showLabels: true,
+                    duration: 500,
+                    labelThreshold: 0.01,
+                    labelSunbeamLayout: true,
+                    yAxis: {
+                        axisLabel: 'Values',
+                        tickFormat: function(d){
+                            return d3.format('%')(d);
+                        }
+                    }
+                }
+            };
+            vm.data = [];
+            let length = stat.folder.length;
+            let restSize = stat.size;
+            for(let i=0; i<length; i++) {
+                restSize -= stat.folder[i].size || 0;
+                vm.data.push({
+                    key: stat.folder[i].name,
+                    y: stat.folder[i].size / stat.size
+                })
+            }
+            vm.data.push({
+                key: '文件',
+                y: restSize / stat.size
+            });
+            console.log(vm.data);
         }
 
         // 获取挂载点的信息

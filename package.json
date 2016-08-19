@@ -13,7 +13,7 @@
     "angular-nvd3": "^1.0.9",
     "angular-ui-bootstrap": "^2.0.2",
     "bootstrap": "^3.3.7",
-    "d3": "^4.2.2",
+    "d3": "^3.5.17",
     "drivelist": "^3.2.6",
     "electron": "^1.3.3",
     "nvd3": "^1.8.4"

@@ -5,13 +5,15 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>硬盘分析</title>
     <link href="node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="node_modules/nvd3/build/nv.d3.css">
+    <link href="./main.css" rel="stylesheet">
     <script src="node_modules/angular/angular.min.js"></script>
-    <script src="node_modules/d3/build/d3.js"></script>
     <script src="node_modules/angular-ui-bootstrap/dist/ui-bootstrap.js"></script>
     <script src="node_modules/angular-ui-bootstrap/dist/ui-bootstrap-tpls.js"></script>
-    <script src="node_modules/nvd3/build/nv.d3.js"></script>
+    <script src="node_modules/d3/d3.js"></script>
+    <script src="./main.js"></script>
+    <script src="node_modules/nvd3/build/nv.d3.min.js" charset="utf-8"></script>
     <script src="node_modules/angular-nvd3/dist/angular-nvd3.js"></script>
+    <link href="node_modules/nvd3/build/nv.d3.css" rel="stylesheet">
 </head>
 <body>
 <div class="container">
@@ -39,7 +41,7 @@
             </ul>
         </li>
     </ul>
-    <div class="loading" ng-show="vm.start">
+    <div class="loading" ng-show="vm.start && !vm.finish">
         <div class="loading-header">
             <h2>正在分析中</h2>
         </div>
@@ -62,18 +64,17 @@
             <li ng-repeat="stat in stat.file" ng-include="'nodes_renderer.html'"></li>
         </ol>
     </script>
-    <nvd3 options="vm.options" data="vm.data"></nvd3>
     <div class="row" ng-if="vm.finish" ng-init="vm.detail(vm.root)">
-        <div class="col-md-12">
-            <nvd3 options="vm.options" data="vm.data"></nvd3>
-        </div>
-        <div class="root col-md-8">
+        <div class="root col-md-4">
             <ol class="root-tree">
                 <li ng-repeat="stat in vm.root.folder" ng-include="'nodes_renderer.html'"></li>
                 <li ng-repeat="stat in vm.root.file" ng-include="'nodes_renderer.html'"></li>
             </ol>
         </div>
-        <div class="root detail col-md-4">
+        <div class="col-md-8 size-analysis">
+            <nvd3 options="vm.options" data="vm.data"></nvd3>
+        </div>
+        <div class="root detail col-md-12">
             <p><span>Name: </span>{{vm.stat.name}}</p>
             <p><span>Size: </span>{{vm.stat.size}} KB</p>
             <p><span>FileCount: </span>{{vm.stat.fileCount}}</p>
@@ -85,7 +86,5 @@
         </div>
     </div>
 </div>
-<link href="./main.css" rel="stylesheet">
-<script src="./main.js"></script>
 </body>
 </html>

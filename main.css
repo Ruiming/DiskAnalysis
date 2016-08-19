@@ -90,9 +90,16 @@ li img {
 .root-tree,
 .detail {
     border: 1px solid #eee;
+    padding: 10px;
+}
+.root-tree {
+    max-height: 470px;
+    overflow-y: auto;
+    padding-left: 0 !important;
 }
 .detail {
     padding: 10px;
+    margin: 15px;
 }
 .detail span {
     color: #4CAF50;
