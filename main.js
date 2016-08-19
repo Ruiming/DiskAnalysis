@@ -65,7 +65,12 @@ const childProcess = require('child_process');
         function detail(stat) {
             stat.more = !stat.more;
             vm.stat = stat;
+            // 图表
             vm.options = {
+                title: {
+                    enable: true,
+                    text: "Analysis of Folder's Size"
+                },
                 chart: {
                     type: 'pieChart',
                     height: 500,
@@ -80,6 +85,11 @@ const childProcess = require('child_process');
                         axisLabel: 'Values',
                         tickFormat: function(d){
                             return d3.format('%')(d);
+                        }
+                    },
+                    tooltip: {
+                        valueFormatter: function (d, i) {
+                            return (d*100).toFixed(2) + "%";
                         }
                     }
                 }
@@ -162,8 +172,8 @@ const childProcess = require('child_process');
             var startTime = new Date().getTime();
             // let dist = mountpoint.split(',');
             // TODO: multi mountpoint ?
-            // root.path = disk.mountpoint;
-            root.path = '/home/ruiming/Dropbox/';
+            root.path = disk.mountpoint;
+            // root.path = '/home/ruiming/Dropbox/';
             root.name = disk.mountpoint;
             if(root.path[root.path.length - 1] !== '/') {
                 root.path += '/';
