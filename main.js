@@ -5,7 +5,7 @@ const childProcess = require('child_process');
 
 (function() {
     angular
-        .module('diskanalysis', ['ui.bootstrap'])
+        .module('diskanalysis', ['ui.bootstrap', 'nvd3'])
         .controller('MainController', MainController);
 
     MainController.$inject = ['$scope', '$interval'];
@@ -21,9 +21,15 @@ const childProcess = require('child_process');
         vm.disks = null;
         // 分析结果
         vm.root = null;
+        // 图标
+        vm.icon = {
+            'file': './images/file.svg',
+            'folder': './images/folder.sve'
+        };
 
         // 函数调用
         vm.analysis = analysis;
+        vm.detail = detail;
 
         // 获取硬盘及分区信息
         // TODO: prefetch every disk's size
@@ -54,6 +60,50 @@ const childProcess = require('child_process');
                 })
             }
         });
+        vm.options = {
+            chart: {
+                type: 'discreteBarChart',
+                height: 450,
+                margin : {
+                    top: 20,
+                    right: 20,
+                    bottom: 60,
+                    left: 55
+                },
+                x: function(d){ return d.label; },
+                y: function(d){ return d.value; },
+                showValues: true,
+                valueFormat: function(d){
+                    return d3.format(',.4f')(d);
+                },
+                transitionDuration: 500,
+                xAxis: {
+                    axisLabel: 'X Axis'
+                },
+                yAxis: {
+                    axisLabel: 'Y Axis',
+                    axisLabelDistance: 30
+                }
+            }
+        };
+        vm.data = [{
+            key: "Cumulative Return",
+            values: [
+                { "label" : "A" , "value" : -29.765957771107 },
+                { "label" : "B" , "value" : 0 },
+                { "label" : "C" , "value" : 32.807804682612 },
+                { "label" : "D" , "value" : 196.45946739256 },
+                { "label" : "E" , "value" : 0.19434030906893 },
+                { "label" : "F" , "value" : -98.079782601442 },
+                { "label" : "G" , "value" : -13.925743130903 },
+                { "label" : "H" , "value" : -5.1387322875705 }
+            ]
+        }];
+        function detail(stat) {
+            stat.more = !stat.more;
+            vm.stat = stat;
+
+        }
 
         // 获取挂载点的信息
         function getDiskMessage(disk) {
@@ -116,7 +166,9 @@ const childProcess = require('child_process');
             var startTime = new Date().getTime();
             // let dist = mountpoint.split(',');
             // TODO: multi mountpoint ?
-            root.path = disk.mountpoint;
+            // root.path = disk.mountpoint;
+            root.path = '/home/ruiming/Dropbox/';
+            root.name = disk.mountpoint;
             if(root.path[root.path.length - 1] !== '/') {
                 root.path += '/';
             }
@@ -167,6 +219,7 @@ const childProcess = require('child_process');
                                         resolve();
                                     } else {
                                         stat.path = tree.path + fileName;
+                                        stat.name = fileName;
                                         currentFile = stat.path;
                                         // ignore directory /proc
                                         if (stat.path === '/proc') {
@@ -228,10 +281,13 @@ const childProcess = require('child_process');
 
         // What can I do to remove this?
         $interval(() => {
-            vm.root = root;
             vm.max = root.max;
             vm.current = calc;
             vm.currentFile = currentFile;
+            if(vm.current === vm.max) {
+                vm.root = root;
+                vm.finish = true;
+            }
         }, 100);
 
     }
