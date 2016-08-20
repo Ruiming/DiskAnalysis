@@ -1,6 +1,6 @@
 body {
-    font-family: Gill Sans Extrabold, sans-serif;
-    color: #2b2b2b;
+    font-family: 'Lato', "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: #555;
 }
 p, ul, li{
     margin-bottom: 0;
@@ -11,6 +11,21 @@ li img {
     float: left;
     margin: 0 10px;
     position: relative;
+}
+::-webkit-scrollbar {
+    height: 12px;
+    width: 12px;
+}
+::-webkit-scrollbar-track {
+    -webkit-box-shadow: inset 0 0 1px rgba(0,0,0,0.3);
+    border-radius: 10px;
+    background-color: white;
+}
+
+::-webkit-scrollbar-thumb {
+    border-radius: 10px;
+    -webkit-box-shadow: inset 0 0 1px rgba(0,0,0,0.5);
+    background-color: white;
 }
 .btn-analysis {
     position: absolute;
@@ -94,20 +109,33 @@ li img {
     padding: 10px;
 }
 .root-tree {
-    max-height: 470px;
+    max-height: 595px;
     overflow-y: auto;
     padding-left: 0 !important;
+    white-space: nowrap;
 }
 .detail {
     padding: 10px;
-    margin: 15px;
+    margin: 5px 15px;
 }
 .detail span {
     color: #4CAF50;
     font-weight: bold;
     padding-right: 5px;
 }
+.detail p {
+    width: 25%;
+}
+.detail p:first-child {
+    white-space: pre;
+    overflow: hidden;
+    text-emphasis: dot;
+}
 .detail p,
 .detail span{
     line-height: 1.8;
+    float: left;
+}
+.page-header {
+    margin: 10px 0 0 10px;
 }

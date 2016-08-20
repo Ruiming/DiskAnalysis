@@ -7,6 +7,17 @@ const childProcess = require('child_process');
 (function() {
     angular
         .module('diskanalysis', ['ui.bootstrap', 'nvd3'])
+        .filter('size', function() {
+            return function(size) {
+                let kb = 1024;
+                let mb = 1024 * 1024;
+                let gb = mb * 1024;
+                if(size > gb) return (size / gb).toFixed(2) + "GB";
+                else if(size > mb) return (size / mb).toFixed(2) + "MB";
+                else if(size > kb) return (size / kb).toFixed(2) + "KB";
+                else return size.toFixed(2) + "B";
+            };
+        })
         .controller('MainController', MainController);
 
     MainController.$inject = ['$scope', '$interval'];
@@ -14,6 +25,7 @@ const childProcess = require('child_process');
     function MainController($scope, $interval) {
         let vm = this;
         // 状态显示
+        vm.time = Date.parse(new Date()) / 1000;
         vm.start = false;
         vm.finish = false;
         vm.max = 0;
@@ -53,19 +65,22 @@ const childProcess = require('child_process');
                             disks[i].disks[j] = data[k++];
                         }
                     }
-                    return disks;
-                }).then(() => {
+                    // Disk itself size ... FIXME
+                    getDiskMessage(mountpoint[0]).then(data => {
+                        Object.assign(disks[i], data);
+                        return disks;
+                    });
+                }).then().then(data => {
                     vm.disks = disks;
                     vm.os = os;
-                    console.log(disks);
-                })
-            }
+                });
+                }
         });
 
         function detail(stat) {
             stat.more = !stat.more;
             vm.stat = stat;
-            // 图表
+            // 饼图显示容量分析结果
             vm.options = {
                 title: {
                     enable: true,
@@ -73,7 +88,7 @@ const childProcess = require('child_process');
                 },
                 chart: {
                     type: 'pieChart',
-                    height: 500,
+                    height: 350,
                     x: function(d){return d.key;},
                     y: function(d){return d.y;},
                     legendPosition: "right",
@@ -95,6 +110,37 @@ const childProcess = require('child_process');
                 }
             };
             vm.data = [];
+            // 柱形图显示平均年龄
+            vm.options2 = {
+                chart: {
+                    type: 'discreteBarChart',
+                    height: 250,
+                    x: function(d){return d.label;},
+                    y: function(d){return d.value;},
+                    showValues: true,
+                    duration: 500,
+                    yAxis: {
+                        "axisLabel": "Y Axis",
+                        "axisLabelDistance": -10
+                    },
+                    tooltip: {
+                        valueFormatter: function (d, i) {
+                            let kb = 1024;
+                            let mb = 1024 * 1024;
+                            let gb = mb * 1024;
+                            if(d > gb) return parseInt(d / gb)  + " GB";
+                            else if (d > mb) return parseInt(d / mb) + " MB";
+                            else if (d > kb) return parseInt(d / kb) + " KB";
+                            else return parseInt(d) + " B";
+                        }
+                    }
+                }
+            };
+            vm.data2 = [{
+                key: "Cumulative Return",
+                values: []
+            }];
+            // 填充
             let length = stat.folder.length;
             let restSize = stat.size;
             for(let i=0; i<length; i++) {
@@ -102,13 +148,20 @@ const childProcess = require('child_process');
                 vm.data.push({
                     key: stat.folder[i].name,
                     y: stat.folder[i].size / stat.size
-                })
+                });
+                vm.data2[0].values.push({
+                    label: stat.folder[i].name,
+                    value: parseInt(stat.folder[i].size)
+                });
             }
             vm.data.push({
                 key: '文件',
                 y: restSize / stat.size
             });
-            console.log(vm.data);
+            vm.data2[0].values.push({
+                label: '文件',
+                value: parseInt(restSize)
+            });
         }
 
         // 获取挂载点的信息
@@ -141,6 +194,7 @@ const childProcess = require('child_process');
             });
         }
 
+        /**
         function analysisWithWorker(disk) {
             const worker = childProcess.fork('worker.js',{
                 execArgv: ['--max_old_space_size=8192'] // increase v8's available memory to 4gb
@@ -165,16 +219,17 @@ const childProcess = require('child_process');
             });
             worker.send('/home/');
         }
+        */
 
         function analysis(disk) {
             vm.start = true;
             // TODO: 统一K为单位
             var startTime = new Date().getTime();
-            // let dist = mountpoint.split(',');
+            let mp = disk.mountpoint.split(',');
             // TODO: multi mountpoint ?
-            root.path = disk.mountpoint;
+            root.path = mp[0];
             // root.path = '/home/ruiming/Dropbox/';
-            root.name = disk.mountpoint;
+            root.name = mp[0];
             if(root.path[root.path.length - 1] !== '/') {
                 root.path += '/';
             }
@@ -186,7 +241,7 @@ const childProcess = require('child_process');
                         log.push(err);
                         reject(err);
                     } else {
-                        Object.assign(root, data, {file: [], folder: [], size: 0, fileCount: 0, folderCount: 0});
+                        Object.assign(root, data, {file: [], folder: [], size: 0, age: 0, fileCount: 0, folderCount: 0});
                         resolve(root);
                     }
                 });
@@ -243,7 +298,7 @@ const childProcess = require('child_process');
                                         } else {
                                             // 用于计算进度
                                             calc += stat.size;
-                                            // 文件数计算
+                                            // 文件数/容量(文件)/年龄计算
                                             tree.size += stat.size;
                                             tree.fileCount++;
                                             stat.fileCount = 1;
@@ -258,15 +313,17 @@ const childProcess = require('child_process');
                             resolve(tree);
                         }).catch(err => {
                             log.push(err);
-                            reject(err);
+                            console.log(err);
                         });
                     }
                 })
             }).then(tree => {
                 return new Promise((resolve, reject) => {
+                    if(tree === void 0) resolve(tree);
                     let promises = tree.folder.map(stat => {
                         return search(stat);
                     });
+                    // datas 是文件夹处理结果
                     Promise.all(promises).then(datas => {
                         datas.map(stat => {
                             // 文件夹计算
@@ -286,7 +343,7 @@ const childProcess = require('child_process');
         }
 
         // What can I do to remove this?
-        $interval(() => {
+        vm.test = $interval(() => {
             vm.max = root.max;
             vm.current = calc;
             vm.currentFile = currentFile;
@@ -294,7 +351,14 @@ const childProcess = require('child_process');
                 vm.root = root;
                 vm.finish = true;
             }
-        }, 100);
+        }, 50);
+
+        if(vm.finish) {
+            $interval.clearInterval(vm.test);
+            $timeout(() => {
+                console.log(log);
+            }, 0);
+        }
 
     }
 }());

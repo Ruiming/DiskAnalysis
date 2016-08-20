@@ -18,7 +18,7 @@
 <body>
 <div class="container">
     <div class="page-header">
-        <h1>硬盘文件分析</h1>
+        <h1>硬盘文件分析<small ng-if="vm.root.usedTime">&nbsp;&nbsp;&nbsp;共分析了 {{vm.root.fileCount}} 个文件，用时 {{vm.root.usedTime}} ms</small></h1>
     </div>
     <ul class="list-group harddisk" ng-show="!vm.start">
         <li class="list-group-item" ng-repeat="disk in vm.disks track by $index">
@@ -54,9 +54,9 @@
     </div>
     <script type="text/ng-template" id="nodes_renderer.html">
         <div ng-click="vm.detail(stat)">
-            <img src="./images/folder.svg" ng-if="stat.isDirectory() && !stat.more">
-            <img src="./images/folder-open.svg" ng-if="stat.isDirectory() && stat.more">
-            <img src="./images/file.svg" ng-if="stat.isFile()">
+            <img src="./images/folder.svg" ng-if="(stat.usedTime || stat.isDirectory()) && !stat.more">
+            <img src="./images/folder-open.svg" ng-if="(stat.usedTime || stat.isDirectory()) && stat.more">
+            <img src="./images/file.svg" ng-if="!stat.isDirectory() && !stat.usedTime">
             {{stat.name}}
         </div>
         <ol ng-if="stat.more">
@@ -65,24 +65,20 @@
         </ol>
     </script>
     <div class="row" ng-if="vm.finish" ng-init="vm.detail(vm.root)">
+        <div class="root detail col-md-12" style="overflow: hidden;">
+            <p><span>Name: </span>{{vm.stat.name}}</p>
+            <p><span>Size: </span>{{vm.stat.size | size}}</p>
+            <p><span>FileCount: </span>{{vm.stat.fileCount || 0}}</p>
+            <p><span>FolderCount: </span>{{vm.stat.folderCount || 0}}</p>
+        </div>
         <div class="root col-md-4">
             <ol class="root-tree">
-                <li ng-repeat="stat in vm.root.folder" ng-include="'nodes_renderer.html'"></li>
-                <li ng-repeat="stat in vm.root.file" ng-include="'nodes_renderer.html'"></li>
+                <li ng-init="stat = vm.root" ng-include="'nodes_renderer.html'"></li>
             </ol>
         </div>
         <div class="col-md-8 size-analysis">
             <nvd3 options="vm.options" data="vm.data"></nvd3>
-        </div>
-        <div class="root detail col-md-12">
-            <p><span>Name: </span>{{vm.stat.name}}</p>
-            <p><span>Size: </span>{{vm.stat.size}} KB</p>
-            <p><span>FileCount: </span>{{vm.stat.fileCount}}</p>
-            <p><span>FolderCount: </span>{{vm.stat.folderCount}}</p>
-            <p><span>Atime:</span>{{vm.stat.atime}}</p>
-            <p><span>Mtime:</span>{{vm.stat.mtime}}</p>
-            <p><span>Ctime:</span>{{vm.stat.ctime}}</p>
-            <p><span>Birthtime:</span>{{vm.stat.birthtime}}</p>
+            <nvd3 options="vm.options2" data="vm.data2"></nvd3>
         </div>
     </div>
 </div>
