@@ -20,9 +20,9 @@ const childProcess = require('child_process');
         })
         .controller('MainController', MainController);
 
-    MainController.$inject = ['$scope', '$interval'];
+    MainController.$inject = ['$scope', '$interval', '$timeout'];
 
-    function MainController($scope, $interval) {
+    function MainController($scope, $interval, $timeout) {
         let vm = this;
         // 状态显示
         vm.time = Date.parse(new Date()) / 1000;
@@ -44,38 +44,37 @@ const childProcess = require('child_process');
         vm.analysis = analysis;
         vm.detail = detail;
 
-        // 获取硬盘及分区信息
-        // TODO: prefetch every disk's size
-        drivelist.list((error, disks) => {
-            if (error) throw error;
-            let promises = [];
-            for(let i=0; i<disks.length; i++) {
-                if(!disks[i].mountpoint) continue;
-                let mountpoint = disks[i].mountpoint.split(',');
-                for(let j=0; j<mountpoint.length; j++) {
-                    promises.push(getDiskMessage(mountpoint[j]))
-                }
-                Promise.all(promises).then(data => {
-                    let k = 0;
-                    for(let i=0; i<disks.length; i++) {
-                        if(!disks[i].mountpoint) continue;
-                        let mountpoint = disks[i].mountpoint.split(',');
-                        disks[i].disks = [];
-                        for(let j=0; j<mountpoint.length; j++) {
-                            disks[i].disks[j] = data[k++];
-                        }
-                    }
-                    // Disk itself size ... FIXME
-                    getDiskMessage(mountpoint[0]).then(data => {
-                        Object.assign(disks[i], data);
-                        return disks;
-                    });
-                }).then().then(data => {
-                    vm.disks = disks;
-                    vm.os = os;
-                });
-                }
+        getMountpoints().then(result => {
+            console.log(result);
+            vm.disks = result;
         });
+
+        // 获取硬盘及分区信息
+        function getMountpoints() {
+            return new Promise((resolve, reject) => {
+                let re = /\s(\S+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s+(\S+)/g;
+                let result = [];
+                childProcess.exec('df -Hlb', (error, stdout, stderr) => {
+                    if (error) {
+                        reject(error);
+                        console.error(`exec error: ${error}`);
+                    } else {
+                        let space = stdout.match(re);
+                        for(let i=0, length=space.length; i<length; i++) {
+                            space[i] = space[i].split(/\s+/);
+                            result.push({
+                                filesystem: space[i][1],
+                                used: space[i][3] * 1024,
+                                available: space[i][4] * 1024,
+                                capacity: space[i][5],
+                                mountpoint: space[i][6]
+                            })
+                        }
+                        resolve(result);
+                    }
+                });
+            })
+        }
 
         function detail(stat) {
             stat.more = !stat.more;
@@ -164,62 +163,6 @@ const childProcess = require('child_process');
             });
         }
 
-        // 获取挂载点的信息
-        function getDiskMessage(disk) {
-            // Read a mountpoint message
-            return new Promise((resolve, reject) => {
-                let sh, re;
-                switch (os) {
-                    case 'linux':
-                        sh = 'df -h -k ' + disk;
-                        re = /\s+(\d+)\s+(\d+)\s+(\d+)[%]/;
-                        break;
-                    default:
-                        alert("Your system is not supported");
-                }
-                childProcess.exec(sh, (error, stdout, stderr) => {
-                    if (error) {
-                        reject(error);
-                        console.error(`exec error: ${error}`);
-                    } else {
-                        let space = stdout.match(re);
-                        resolve({
-                            usedSpace: space[1] * 1024,
-                            availableSpace: space[2] * 1024,
-                            used: space[3] / 100,
-                            mountpoint: disk
-                        });
-                    }
-                });
-            });
-        }
-
-        /**
-        function analysisWithWorker(disk) {
-            const worker = childProcess.fork('worker.js',{
-                execArgv: ['--max_old_space_size=8192'] // increase v8's available memory to 4gb
-            });
-            vm.max = disk.usedSpace * 1024;
-            worker.on('message',function(data) {
-                console.log(data);
-                switch(data.type) {
-                    case 'processing':
-                        vm.current = data.size;
-                        break;
-                    case 'end':
-                        vm.current = vm.max;
-                        vm.end = true;
-                        break;
-                    case 'result':
-                        console.log(data);
-                        vm.data = data;
-                        break;
-                    default:
-                }
-            });
-            worker.send('/home/');
-        }
-        */
 
         function analysis(disk) {
             vm.start = true;
@@ -234,7 +177,7 @@ const childProcess = require('child_process');
                 root.path += '/';
             }
             // 遍历以B计算
-            root.max = disk.usedSpace;
+            root.max = disk.used;
             new Promise((resolve, reject) => {
                 fs.lstat(root.path, (err, data) => {
                     if (err) {
@@ -283,7 +226,7 @@ const childProcess = require('child_process');
                                         stat.name = fileName;
                                         currentFile = stat.path;
                                         // ignore directory /proc
-                                        if (stat.path === '/proc') {
+                                        if (stat.path === '/proc' || stat.path === '/Volume') {
                                             tree.fileCount++;
                                             stat.fileCount = 1;
                                             tree.file.push(stat);

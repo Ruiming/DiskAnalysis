@@ -32,7 +32,7 @@ li img {
     height: 36px;
     width: 60px;
     right: 20px;
-    top: 40px;
+    top: 30px;
 }
 .harddisk {
     border: 0;
@@ -40,32 +40,9 @@ li img {
 }
 .harddisk li {
     border: 1px solid #ddd;
-    margin: 10px 0 20px 0;
-    padding: 20px 0 0 0;
 }
 .harddisk li:hover {
     background-color: #f4f4f4;
-}
-.mountpoint {
-    margin: 20px 0 0;
-    border: 0;
-}
-.mountpoint li {
-    background-color: #fff;
-    padding: 15px;
-    border: 0;
-    margin: 0;
-    border-top: 1px solid #ddd;
-}
-.mountpoint li:hover {
-    background-color: #f4f4f4;
-}
-.mountpoint .btn-analysis {
-    top: 26px;
-}
-.mountpoint img{
-    height: 60px;
-    margin: 0 10px 0 80px;
 }
 .loading {
     font-size: 14px;
