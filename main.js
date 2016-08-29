@@ -24,6 +24,7 @@ const childProcess = require('child_process');
 
     function MainController($scope, $interval, $timeout) {
         let vm = this;
+        let mounted = [];
         // 状态显示
         vm.time = Date.parse(new Date()) / 1000;
         vm.start = false;
@@ -68,8 +69,11 @@ const childProcess = require('child_process');
                                 available: space[i][4] * 1024,
                                 capacity: space[i][5],
                                 mountpoint: space[i][6]
-                            })
+                            });
+                            mounted.push(space[i][6]);
                         }
+                        // ignore '/proc' in Linux
+                        mounted.push('/proc');
                         resolve(result);
                     }
                 });
@@ -140,7 +144,7 @@ const childProcess = require('child_process');
                 values: []
             }];
             // 填充
-            let length = stat.folder.length;
+            let length = stat.folder && stat.folder.length || 0;
             let restSize = stat.size;
             for(let i=0; i<length; i++) {
                 restSize -= stat.folder[i].size || 0;
@@ -225,8 +229,7 @@ const childProcess = require('child_process');
                                         stat.path = tree.path + fileName;
                                         stat.name = fileName;
                                         currentFile = stat.path;
-                                        // ignore directory /proc
-                                        if (stat.path === '/proc' || stat.path === '/Volume') {
+                                        if (mounted.indexOf(stat.path) !== -1) {
                                             tree.fileCount++;
                                             stat.fileCount = 1;
                                             tree.file.push(stat);
