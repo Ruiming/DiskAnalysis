@@ -185,6 +185,7 @@ const childProcess = require('child_process');
             new Promise((resolve, reject) => {
                 fs.lstat(root.path, (err, data) => {
                     if (err) {
+                        console.log(err);
                         log.push(err);
                         reject(err);
                     } else {
@@ -216,6 +217,7 @@ const childProcess = require('child_process');
                 fs.readdir(tree.path, (err, data) => {
                     // Use resolve to avoid Promise.all no work
                     if (err) {
+                        console.log(err);
                         log.push(err);
                         resolve();
                     } else {
@@ -226,6 +228,11 @@ const childProcess = require('child_process');
                                         log.push(err);
                                         resolve();
                                     } else {
+                                        let mini = {
+                                            size: stat.size,
+                                            isDirectory: stat.isDirectory()
+                                        };
+                                        stat = mini;
                                         stat.path = tree.path + fileName;
                                         stat.name = fileName;
                                         currentFile = stat.path;
@@ -234,7 +241,7 @@ const childProcess = require('child_process');
                                             stat.fileCount = 1;
                                             tree.file.push(stat);
                                             resolve(stat);
-                                        } else if (stat.isDirectory()) {
+                                        } else if (stat.isDirectory) {
                                             stat.path += '/';
                                             stat.folderCount = 0;
                                             stat.folder = [];
@@ -273,7 +280,7 @@ const childProcess = require('child_process');
                     Promise.all(promises).then(datas => {
                         datas.map(stat => {
                             // 文件夹计算
-                            if (stat && stat.isDirectory())  tree.folderCount += stat.folderCount + 1;
+                            if (stat && stat.isDirectory)  tree.folderCount += stat.folderCount + 1;
                             // 容量计算
                             if (stat) {
                                 tree.size += stat.size;
@@ -282,6 +289,7 @@ const childProcess = require('child_process');
                         });
                         resolve(tree);
                     }).catch(err => {
+                        console.log(err);
                         log.push(err);
                     });
                 });
@@ -293,6 +301,7 @@ const childProcess = require('child_process');
             vm.max = root.max;
             vm.current = calc;
             vm.currentFile = currentFile;
+            console.log(calc);
             if(vm.current === vm.max) {
                 vm.root = root;
                 vm.finish = true;

@@ -44,9 +44,9 @@
     </div>
     <script type="text/ng-template" id="nodes_renderer.html">
         <div ng-click="vm.detail(stat)">
-            <img src="./images/folder.svg" ng-if="(stat.usedTime || stat.isDirectory()) && !stat.more">
-            <img src="./images/folder-open.svg" ng-if="(stat.usedTime || stat.isDirectory()) && stat.more">
-            <img src="./images/file.svg" ng-if="!stat.isDirectory() && !stat.usedTime">
+            <img src="./images/folder.svg" ng-if="(stat.usedTime || stat.isDirectory) && !stat.more">
+            <img src="./images/folder-open.svg" ng-if="(stat.usedTime || stat.isDirectory) && stat.more">
+            <img src="./images/file.svg" ng-if="!stat.isDirectory && !stat.usedTime">
             {{stat.name}}
         </div>
         <ol ng-if="stat.more">
