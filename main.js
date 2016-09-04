@@ -55,7 +55,7 @@ const childProcess = require('child_process');
             return new Promise((resolve, reject) => {
                 let re = /\s(\S+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s+(\S+)/g;
                 let result = [];
-                childProcess.exec('df -Hlb', (error, stdout, stderr) => {
+                childProcess.exec('df -Hlk', (error, stdout, stderr) => {
                     if (error) {
                         reject(error);
                         console.error(`exec error: ${error}`);
