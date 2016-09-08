@@ -15,14 +15,14 @@ const childProcess = require('child_process');
                 if(size > gb) return (size / gb).toFixed(2) + "GB";
                 else if(size > mb) return (size / mb).toFixed(2) + "MB";
                 else if(size > kb) return (size / kb).toFixed(2) + "KB";
-                else return size.toFixed(2) + "B";
+                else return size + "B";
             };
         })
         .controller('MainController', MainController);
 
-    MainController.$inject = ['$scope', '$interval', '$timeout'];
+    MainController.$inject = ['$scope', '$interval', '$timeout', '$q'];
 
-    function MainController($scope, $interval, $timeout) {
+    function MainController($scope, $interval, $timeout, $q) {
         let vm = this;
         let mounted = [];
         // 状态显示
@@ -52,32 +52,57 @@ const childProcess = require('child_process');
 
         // 获取硬盘及分区信息
         function getMountpoints() {
-            return new Promise((resolve, reject) => {
-                let re = /\s(\S+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s+(\S+)/g;
-                let result = [];
-                childProcess.exec('df -Hlk', (error, stdout, stderr) => {
+            return new $q((resolve, reject) => {
+                let re = /(.+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s+(\S+)/g;
+                let result = {}, mounted=[];
+                childProcess.exec('df -Hlk | grep sd', (error, stdout, stderr) => {
                     if (error) {
                         reject(error);
                         console.error(`exec error: ${error}`);
                     } else {
                         let space = stdout.match(re);
                         for(let i=0, length=space.length; i<length; i++) {
-                            space[i] = space[i].split(/\s+/);
-                            result.push({
-                                filesystem: space[i][1],
-                                used: space[i][3] * 1024,
-                                available: space[i][4] * 1024,
-                                capacity: space[i][5],
-                                mountpoint: space[i][6]
+                            if(!(space[i] instanceof Array)) {
+                                space[i] = space[i].split(/\s+/);
+                            }
+                            if(!result[space[i][0].match(/(\D+)/)[1]]) result[space[i][0].match(/(\D+)/)[1]] = [];
+                            result[space[i][0].match(/(\D+)/)[1]].push({
+                                filesystem: space[i][0],
+                                used: space[i][2] * 1024,
+                                available: space[i][3] * 1024,
+                                capacity: space[i][4],
+                                mountpoint: space[i][5]
                             });
-                            mounted.push(space[i][6]);
+                            mounted.push(space[i][5]);
+                        }
+                        for(let hd in result) {
+                            if(result.hasOwnProperty(hd)) {
+                                childProcess.exec(`sudo hdparm -I ${hd}`, (error, stdout, stderr) => {
+                                    if(error) {
+                                        reject(error);
+                                        console.error(`exec error:${error}`);
+                                    } else {
+                                        let model = /Model\sNumber:\s+(.+)/;
+                                        let serial = /Serial\sNumber:\s+(.+)/;
+                                        let size = /1024\*1024:\s+(.+)MBytes/;  // MB
+                                        result[hd]['model'] = stdout.match(model)[1].trim();
+                                        result[hd]['serial'] = stdout.match(serial)[1].trim();
+                                        result[hd]['size'] = +stdout.match(size)[1].trim() * 1024 * 1024;
+                                        result[hd]['mountpoint'] = '';
+                                        for(let i=0; i<result[hd].length; i++) {
+                                            result[hd]['mountpoint'] += result[hd]['mountpoint']  ?  ', ' + result[hd][i]['mountpoint'] : result[hd][i]['mountpoint'];
+                                        }
+                                    }
+                                    resolve(result);
+                                })
+                            }
                         }
                         // ignore '/proc' in Linux
                         mounted.push('/proc');
                         resolve(result);
                     }
                 });
-            })
+            });
         }
 
         function detail(stat) {
@@ -182,7 +207,7 @@ const childProcess = require('child_process');
             }
             // 遍历以B计算
             root.max = disk.used;
-            new Promise((resolve, reject) => {
+            new $q((resolve, reject) => {
                 fs.lstat(root.path, (err, data) => {
                     if (err) {
                         console.log(err);
@@ -213,11 +238,10 @@ const childProcess = require('child_process');
         var currentFile = null;
 
         function search(tree) {
-            return new Promise((resolve, reject) => {
+            return new $q((resolve, reject) => {
                 fs.readdir(tree.path, (err, data) => {
                     // Use resolve to avoid Promise.all no work
                     if (err) {
-                        console.log(err);
                         log.push(err);
                         resolve();
                     } else {
@@ -262,7 +286,7 @@ const childProcess = require('child_process');
                                 })
                             });
                         });
-                        Promise.all(promises).then(() => {
+                        $q.all(promises).then(() => {
                             resolve(tree);
                         }).catch(err => {
                             log.push(err);
@@ -271,13 +295,14 @@ const childProcess = require('child_process');
                     }
                 })
             }).then(tree => {
-                return new Promise((resolve, reject) => {
-                    if(tree === void 0) resolve(tree);
-                    let promises = tree.folder.map(stat => {
-                        return search(stat);
-                    });
+                return new $q((resolve, reject) => {
+                    if(tree === void 0 || tree.folder === void 0) resolve(tree);
+                   else {
+                        let promises = tree.folder.map(stat => {
+                            return search(stat);
+                        });
                     // datas 是文件夹处理结果
-                    Promise.all(promises).then(datas => {
+                    $q.all(promises).then(datas => {
                         datas.map(stat => {
                             // 文件夹计算
                             if (stat && stat.isDirectory)  tree.folderCount += stat.folderCount + 1;
@@ -289,19 +314,17 @@ const childProcess = require('child_process');
                         });
                         resolve(tree);
                     }).catch(err => {
-                        console.log(err);
                         log.push(err);
                     });
-                });
+                }});
             })
         }
 
-        // What can I do to remove this?
+        // TODO
         vm.test = $interval(() => {
             vm.max = root.max;
             vm.current = calc;
             vm.currentFile = currentFile;
-            console.log(calc);
             if(vm.current === vm.max) {
                 vm.root = root;
                 vm.finish = true;
@@ -310,9 +333,6 @@ const childProcess = require('child_process');
 
         if(vm.finish) {
             $interval.clearInterval(vm.test);
-            $timeout(() => {
-                console.log(log);
-            }, 0);
         }
 
     }

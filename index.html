@@ -20,13 +20,23 @@
     <div class="page-header">
         <h1>硬盘文件分析<small ng-if="vm.root.usedTime">&nbsp;&nbsp;&nbsp;共分析了 {{vm.root.fileCount}} 个文件，用时 {{vm.root.usedTime}} ms</small></h1>
     </div>
-    <ul class="list-group harddisk" ng-show="!vm.start">
-        <li class="list-group-item" ng-repeat="disk in vm.disks track by $index">
+    <ul class="list-group harddisk" ng-show="!vm.start" ng-repeat="(hd , disks) in vm.disks track by $index">
+        <li class="list-group-item">
             <img src="./hard-disk.svg">
-            <p>Filesystem：{{disk.filesystem}}</p>
-            <p>Used：{{disk.used | size}}</p>
-            <p>Available：{{disk.available | size}}</p>
-            <p>Mountpoints：{{disk.mountpoint}}</p>
+                <p>描述：{{disks.model}}</p>
+            <p>序列号：{{disks.serial}}</p>
+            <p>容量：{{disks.size | size}}</p>
+            <p>挂载点：{{disks.mountpoint}}</p>
+            <input type="button" class="btn btn-primary btn-analysis" value="分析"
+                ng-disabled="disks.mountpoint" ng-click="vm.analysis(disk)">
+            <!-- TODO -->
+        </li>
+        <li class="list-group-item" ng-repeat="disk in disks track by $index">
+            <img src="./mountpoint.svg">
+            <p>文件系统：{{disk.filesystem}}</p>
+            <p>已用容量：{{disk.used | size}}</p>
+            <p>可用容量：{{disk.available | size}}</p>
+            <p>挂载点：{{disk.mountpoint}}</p>
             <input type="button" class="btn btn-primary btn-analysis" value="分析"
                    ng-disabled="!disk.mountpoint" ng-click="vm.analysis(disk)">
         </li>
