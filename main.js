@@ -4,17 +4,17 @@ var drivelist = require('drivelist');
 var d3 = require('d3');
 const childProcess = require('child_process');
 
-(function() {
+(function () {
     angular
         .module('diskanalysis', ['ui.bootstrap', 'nvd3'])
-        .filter('size', function() {
-            return function(size) {
+        .filter('size', function () {
+            return function (size) {
                 let kb = 1024;
                 let mb = 1024 * 1024;
                 let gb = mb * 1024;
-                if(size > gb) return (size / gb).toFixed(2) + "GB";
-                else if(size > mb) return (size / mb).toFixed(2) + "MB";
-                else if(size > kb) return (size / kb).toFixed(2) + "KB";
+                if (size > gb) return (size / gb).toFixed(2) + "GB";
+                else if (size > mb) return (size / mb).toFixed(2) + "MB";
+                else if (size > kb) return (size / kb).toFixed(2) + "KB";
                 else return size + "B";
             };
         })
@@ -24,19 +24,18 @@ const childProcess = require('child_process');
 
     function MainController($scope, $interval, $timeout, $q) {
         let vm = this;
-        let mounted = [];
         // 状态显示
         vm.time = Date.parse(new Date()) / 1000;
-        vm.start = false;
-        vm.finish = false;
-        vm.max = 0;
-        vm.current = 0;
-        // 显示磁盘
-        vm.disks = null;
-        // 分析结果
-        vm.root = null;
-        // 图标
-        vm.icon = {
+        vm.start = false;       // 开始标志
+        vm.finish = false;      // 结束标志
+        vm.max = 0;             // 根总容量
+        vm.current = 0;         // 根当前计算容量
+        vm.root = {};           // 根
+        vm.mounted = [];        // 挂载点
+        vm.log = [];            // 日志
+        vm.currentFile = null;  // 当前分析的文件
+        vm.disks = null;        // 磁盘
+        vm.icon = {             // 图标
             'file': './images/file.svg',
             'folder': './images/folder.sve'
         };
@@ -45,27 +44,29 @@ const childProcess = require('child_process');
         vm.analysis = analysis;
         vm.detail = detail;
 
+        // 获取首页信息
         getMountpoints().then(result => {
-            console.log(result);
             vm.disks = result;
+            console.log(vm.disks);
+            console.log(vm.mounted);
         });
 
         // 获取硬盘及分区信息
         function getMountpoints() {
             return new $q((resolve, reject) => {
                 let re = /(.+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s+(\S+)/g;
-                let result = {}, mounted=[];
+                let result = {}, mounted = [];
                 childProcess.exec('df -Hlk | grep sd', (error, stdout, stderr) => {
                     if (error) {
                         reject(error);
                         console.error(`exec error: ${error}`);
                     } else {
                         let space = stdout.match(re);
-                        for(let i=0, length=space.length; i<length; i++) {
-                            if(!(space[i] instanceof Array)) {
+                        for (let i = 0, length = space.length; i < length; i++) {
+                            if (!(space[i] instanceof Array)) {
                                 space[i] = space[i].split(/\s+/);
                             }
-                            if(!result[space[i][0].match(/(\D+)/)[1]]) result[space[i][0].match(/(\D+)/)[1]] = [];
+                            if (!result[space[i][0].match(/(\D+)/)[1]]) result[space[i][0].match(/(\D+)/)[1]] = [];
                             result[space[i][0].match(/(\D+)/)[1]].push({
                                 filesystem: space[i][0],
                                 used: space[i][2] * 1024,
@@ -73,38 +74,44 @@ const childProcess = require('child_process');
                                 capacity: space[i][4],
                                 mountpoint: space[i][5]
                             });
-                            mounted.push(space[i][5]);
+                            vm.mounted.push(space[i][5]);
                         }
-                        for(let hd in result) {
-                            if(result.hasOwnProperty(hd)) {
-                                childProcess.exec(`sudo hdparm -I ${hd}`, (error, stdout, stderr) => {
-                                    if(error) {
-                                        reject(error);
-                                        console.error(`exec error:${error}`);
-                                    } else {
-                                        let model = /Model\sNumber:\s+(.+)/;
-                                        let serial = /Serial\sNumber:\s+(.+)/;
-                                        let size = /1024\*1024:\s+(.+)MBytes/;  // MB
-                                        result[hd]['model'] = stdout.match(model)[1].trim();
-                                        result[hd]['serial'] = stdout.match(serial)[1].trim();
-                                        result[hd]['size'] = +stdout.match(size)[1].trim() * 1024 * 1024;
-                                        result[hd]['mountpoint'] = '';
-                                        for(let i=0; i<result[hd].length; i++) {
-                                            result[hd]['mountpoint'] += result[hd]['mountpoint']  ?  ', ' + result[hd][i]['mountpoint'] : result[hd][i]['mountpoint'];
+                        let promises = [];
+                        for (let hd in result) {
+                            if (result.hasOwnProperty(hd)) {
+                                promises.push(new $q((resolve, reject) => {
+                                    childProcess.exec(`sudo hdparm -I ${hd}`, (error, stdout, stderr) => {
+                                        if (error) {
+                                            reject(error);
+                                            console.error(`exec error:${error}`);
+                                        } else {
+                                            let model = /Model\sNumber:\s+(.+)/;
+                                            let serial = /Serial\sNumber:\s+(.+)/;
+                                            let size = /1024\*1024:\s+(.+)MBytes/;  // MB
+                                            result[hd]['model'] = stdout.match(model)[1].trim();
+                                            result[hd]['serial'] = stdout.match(serial)[1].trim();
+                                            result[hd]['size'] = +stdout.match(size)[1].trim() * 1024 * 1024;
+                                            result[hd]['mountpoint'] = '';
+                                            for (let i = 0; i < result[hd].length; i++) {
+                                                result[hd]['mountpoint'] += result[hd]['mountpoint'] ? ', ' + result[hd][i]['mountpoint'] : result[hd][i]['mountpoint'];
+                                            }
+                                            resolve(result[hd]);
                                         }
-                                    }
-                                    resolve(result);
-                                })
+                                    });
+                                }));
                             }
                         }
-                        // ignore '/proc' in Linux
-                        mounted.push('/proc');
-                        resolve(result);
+                        $q.all(promises).then(data => {
+                            // ignore '/proc' in Linux
+                            vm.mounted.push('/proc');
+                            resolve(result);
+                        })
                     }
                 });
             });
         }
 
+        // 点击文件或文件夹时对其分析
         function detail(stat) {
             stat.more = !stat.more;
             vm.stat = stat;
@@ -117,8 +124,8 @@ const childProcess = require('child_process');
                 chart: {
                     type: 'pieChart',
                     height: 350,
-                    x: function(d){return d.key;},
-                    y: function(d){return d.y;},
+                    x: function (d) { return d.key; },
+                    y: function (d) { return d.y; },
                     legendPosition: "right",
                     showLabels: true,
                     duration: 500,
@@ -126,13 +133,13 @@ const childProcess = require('child_process');
                     labelSunbeamLayout: true,
                     yAxis: {
                         axisLabel: 'Values',
-                        tickFormat: function(d){
+                        tickFormat: function (d) {
                             return d3.format('%')(d);
                         }
                     },
                     tooltip: {
                         valueFormatter: function (d, i) {
-                            return (d*100).toFixed(2) + "%";
+                            return (d * 100).toFixed(2) + "%";
                         }
                     }
                 }
@@ -143,8 +150,8 @@ const childProcess = require('child_process');
                 chart: {
                     type: 'discreteBarChart',
                     height: 250,
-                    x: function(d){return d.label;},
-                    y: function(d){return d.value;},
+                    x: function (d) { return d.label; },
+                    y: function (d) { return d.value; },
                     showValues: true,
                     duration: 500,
                     yAxis: {
@@ -156,7 +163,7 @@ const childProcess = require('child_process');
                             let kb = 1024;
                             let mb = 1024 * 1024;
                             let gb = mb * 1024;
-                            if(d > gb) return parseInt(d / gb)  + " GB";
+                            if (d > gb) return parseInt(d / gb) + " GB";
                             else if (d > mb) return parseInt(d / mb) + " MB";
                             else if (d > kb) return parseInt(d / kb) + " KB";
                             else return parseInt(d) + " B";
@@ -171,7 +178,7 @@ const childProcess = require('child_process');
             // 填充
             let length = stat.folder && stat.folder.length || 0;
             let restSize = stat.size;
-            for(let i=0; i<length; i++) {
+            for (let i = 0; i < length; i++) {
                 restSize -= stat.folder[i].size || 0;
                 vm.data.push({
                     key: stat.folder[i].name,
@@ -192,64 +199,76 @@ const childProcess = require('child_process');
             });
         }
 
-
-        function analysis(disk) {
+        // 分析磁盘或硬盘
+        function analysis(disks) {
             vm.start = true;
-            // TODO: 统一K为单位
             var startTime = new Date().getTime();
-            let mp = disk.mountpoint.split(',');
-            // TODO: multi mountpoint ?
-            root.path = mp[0];
-            // root.path = '/home/ruiming/Dropbox/';
-            root.name = mp[0];
-            if(root.path[root.path.length - 1] !== '/') {
-                root.path += '/';
-            }
-            // 遍历以B计算
-            root.max = disk.used;
-            new $q((resolve, reject) => {
-                fs.lstat(root.path, (err, data) => {
-                    if (err) {
-                        console.log(err);
-                        log.push(err);
-                        reject(err);
-                    } else {
-                        Object.assign(root, data, {file: [], folder: [], size: 0, age: 0, fileCount: 0, folderCount: 0});
-                        resolve(root);
+            let promises = disks.map(disk => {
+                disk.path = disk.mountpoint;
+                disk.name = disk.mountpoint;
+                disk.isDirectory = true;
+                if (disk.path[disk.path.length - 1] !== '/') {
+                    disk.path += '/';
+                }
+                vm.max += disk.used;
+                return new $q((resolve, reject) => {
+                    fs.lstat(disk.path, (err, data) => {
+                        if (err) {
+                            console.log(err);
+                            log.push(err);
+                            reject(err);
+                        } else {
+                            Object.assign(disk, data, { file: [], folder: [], size: 0, age: 0, fileCount: 0, folderCount: 0 });
+                            resolve(disk);
+                        }
+                    });
+                }).then(disk => search(disk))
+            });
+            $q.all(promises).then(data => {
+                var endTime = new Date().getTime();
+                var usedTime = endTime - startTime;
+                vm.root.startTime = startTime;
+                vm.root.endTime = endTime;
+                vm.root.usedTime = usedTime;
+                if (data.length === 1) {
+                    vm.current = data.size;
+                    vm.max = data.size;
+                    Object.assign(vm.root, data[0]);
+                    vm.finish = true;
+                } else {
+                    vm.current = 0;
+                    vm.root.folder = [];
+                    vm.root.size = 0;
+                    vm.root.fileCount = vm.root.folderCount = 0;
+                    for(let i=0; i<data.length; i++) {
+                        vm.current += data[i].size;
+                        vm.max += data[i].size;
+                        vm.root.size += +data[i].size;
+                        vm.root.fileCount += data[i].fileCount;
+                        vm.root.folderCount += data[i].folderCount;
+                        vm.root.folder.push(data[i]);
                     }
-                });
-            }).then(root => search(root))
-                .then(() => {
-                    var endTime = new Date().getTime();
-                    let usedTime = endTime - startTime;
-                    calc = root.size;
-                    root.max = root.size;
-                    root.startTime = startTime;
-                    root.endTime = endTime;
-                    root.usedTime = usedTime;
-                    console.log(root);
-                    console.log(log);
-                });
+                    vm.root.name = disks.model;
+                    vm.finish = true;
+                }
+                console.log(vm.root);
+                console.log(vm.log);
+            })
         }
-
-        var root = {};
-        var log = [];
-        var calc = 0;
-        var currentFile = null;
 
         function search(tree) {
             return new $q((resolve, reject) => {
                 fs.readdir(tree.path, (err, data) => {
                     // Use resolve to avoid Promise.all no work
                     if (err) {
-                        log.push(err);
+                        vm.log.push(err);
                         resolve();
                     } else {
                         let promises = data.map(fileName => {
-                            return new Promise((resolve, reject) => {
+                            return new $q((resolve, reject) => {
                                 fs.lstat(tree.path + fileName, (err, stat) => {
                                     if (err) {
-                                        log.push(err);
+                                        vm.log.push(err);
                                         resolve();
                                     } else {
                                         let mini = {
@@ -259,8 +278,8 @@ const childProcess = require('child_process');
                                         stat = mini;
                                         stat.path = tree.path + fileName;
                                         stat.name = fileName;
-                                        currentFile = stat.path;
-                                        if (mounted.indexOf(stat.path) !== -1) {
+                                        vm.currentFile = stat.path;
+                                        if (vm.mounted.indexOf(stat.path) !== -1) {
                                             tree.fileCount++;
                                             stat.fileCount = 1;
                                             tree.file.push(stat);
@@ -274,7 +293,7 @@ const childProcess = require('child_process');
                                             tree.folder.push(stat);
                                         } else {
                                             // 用于计算进度
-                                            calc += stat.size;
+                                            vm.current += stat.size;
                                             // 文件数/容量(文件)/年龄计算
                                             tree.size += stat.size;
                                             tree.fileCount++;
@@ -289,51 +308,36 @@ const childProcess = require('child_process');
                         $q.all(promises).then(() => {
                             resolve(tree);
                         }).catch(err => {
-                            log.push(err);
+                            vm.log.push(err);
                             console.log(err);
                         });
                     }
                 })
             }).then(tree => {
                 return new $q((resolve, reject) => {
-                    if(tree === void 0 || tree.folder === void 0) resolve(tree);
-                   else {
+                    if (tree === void 0 || tree.folder === void 0) resolve(tree);
+                    else {
                         let promises = tree.folder.map(stat => {
                             return search(stat);
                         });
-                    // datas 是文件夹处理结果
-                    $q.all(promises).then(datas => {
-                        datas.map(stat => {
-                            // 文件夹计算
-                            if (stat && stat.isDirectory)  tree.folderCount += stat.folderCount + 1;
-                            // 容量计算
-                            if (stat) {
-                                tree.size += stat.size;
-                                tree.fileCount += stat.fileCount;
-                            }
+                        // datas 是文件夹处理结果
+                        $q.all(promises).then(datas => {
+                            datas.map(stat => {
+                                // 文件夹计算
+                                if (stat && stat.isDirectory) tree.folderCount += stat.folderCount + 1;
+                                // 容量计算
+                                if (stat) {
+                                    tree.size += stat.size;
+                                    tree.fileCount += stat.fileCount;
+                                }
+                            });
+                            resolve(tree);
+                        }).catch(err => {
+                            vm.log.push(err);
                         });
-                        resolve(tree);
-                    }).catch(err => {
-                        log.push(err);
-                    });
-                }});
+                    }
+                });
             })
         }
-
-        // TODO
-        vm.test = $interval(() => {
-            vm.max = root.max;
-            vm.current = calc;
-            vm.currentFile = currentFile;
-            if(vm.current === vm.max) {
-                vm.root = root;
-                vm.finish = true;
-            }
-        }, 50);
-
-        if(vm.finish) {
-            $interval.clearInterval(vm.test);
-        }
-
     }
-}());
+} ());

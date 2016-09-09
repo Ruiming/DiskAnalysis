@@ -23,12 +23,12 @@
     <ul class="list-group harddisk" ng-show="!vm.start" ng-repeat="(hd , disks) in vm.disks track by $index">
         <li class="list-group-item">
             <img src="./hard-disk.svg">
-                <p>描述：{{disks.model}}</p>
+            <p>描述：{{disks.model}}</p>
             <p>序列号：{{disks.serial}}</p>
             <p>容量：{{disks.size | size}}</p>
             <p>挂载点：{{disks.mountpoint}}</p>
             <input type="button" class="btn btn-primary btn-analysis" value="分析"
-                ng-disabled="disks.mountpoint" ng-click="vm.analysis(disk)">
+                ng-disabled="!disks.mountpoint" ng-click="vm.analysis(disks)">
             <!-- TODO -->
         </li>
         <li class="list-group-item" ng-repeat="disk in disks track by $index">
@@ -38,7 +38,7 @@
             <p>可用容量：{{disk.available | size}}</p>
             <p>挂载点：{{disk.mountpoint}}</p>
             <input type="button" class="btn btn-primary btn-analysis" value="分析"
-                   ng-disabled="!disk.mountpoint" ng-click="vm.analysis(disk)">
+                   ng-disabled="!disk.mountpoint" ng-click="vm.analysis([disk])">
         </li>
     </ul>
     <div class="loading" ng-show="vm.start && !vm.finish">
